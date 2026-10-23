@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 
-const emptyForm = { name: '', description: '', price: '' };
+const emptyForm = { name: '', description: '', price: '', category_id: '' };
 
 export default function Home() {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(emptyForm);
+  const [categoryName, setCategoryName] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -27,8 +29,20 @@ export default function Home() {
     }
   }
 
+  async function loadCategories() {
+    try {
+      const res = await fetch('/api/categories');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal memuat kategori');
+      setCategories(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   useEffect(() => {
     loadProducts();
+    loadCategories();
   }, []);
 
   function handleChange(e) {
@@ -42,6 +56,7 @@ export default function Home() {
       name: product.name,
       description: product.description || '',
       price: product.price,
+      category_id: product.category_id || '',
     });
   }
 
@@ -74,6 +89,28 @@ export default function Home() {
       setError(err.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCategorySubmit(e) {
+    e.preventDefault();
+    setError('');
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: categoryName }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal menambahkan kategori');
+
+      setCategories((current) => [...current, data].sort((a, b) =>
+        a.name.localeCompare(b.name, 'id')
+      ));
+      setForm((current) => ({ ...current, category_id: String(data.id) }));
+      setCategoryName('');
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -139,6 +176,23 @@ export default function Home() {
             />
           </div>
 
+          <div className="form-row">
+            <label htmlFor="category_id">Kategori</label>
+            <select
+              id="category_id"
+              name="category_id"
+              value={form.category_id}
+              onChange={handleChange}
+            >
+              <option value="">Tanpa kategori</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="form-actions">
             <button type="submit" className="btn-primary" disabled={saving}>
               {saving ? 'Menyimpan...' : editingId ? 'Update' : 'Simpan'}
@@ -152,6 +206,27 @@ export default function Home() {
         </form>
       </div>
 
+      <div className="card">
+        <h3>Tambah Kategori</h3>
+        <form onSubmit={handleCategorySubmit}>
+          <div className="form-row">
+            <label htmlFor="category_name">Nama Kategori</label>
+            <input
+              id="category_name"
+              value={categoryName}
+              onChange={(e) => setCategoryName(e.target.value)}
+              placeholder="Misal: Minuman"
+              required
+            />
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="btn-primary">
+              Tambah Kategori
+            </button>
+          </div>
+        </form>
+      </div>
+
       <div className="status">
         {loading ? 'Memuat data...' : `${products.length} produk ditemukan`}
       </div>
@@ -161,6 +236,7 @@ export default function Home() {
           <tr>
             <th>Nama</th>
             <th>Deskripsi</th>
+            <th>Kategori</th>
             <th>Harga</th>
             <th>Aksi</th>
           </tr>
@@ -170,6 +246,7 @@ export default function Home() {
             <tr key={p.id}>
               <td>{p.name}</td>
               <td>{p.description}</td>
+              <td>{p.category_name || '-'}</td>
               <td>Rp {Number(p.price).toLocaleString('id-ID')}</td>
               <td>
                 <button className="btn-edit" onClick={() => startEdit(p)}>

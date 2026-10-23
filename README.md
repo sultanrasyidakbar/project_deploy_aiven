@@ -8,6 +8,7 @@ dengan database di Aiven.
 
 ```
 app/
+  api/categories/route.js       -> GET (list), POST (create)
   api/products/route.js         -> GET (list), POST (create)
   api/products/[id]/route.js    -> GET (detail), PUT (update), DELETE
   page.js                       -> Halaman utama (tabel + form)
@@ -15,7 +16,7 @@ app/
   globals.css
 lib/
   db.js                         -> Koneksi pool MySQL (support SSL Aiven)
-schema.sql                      -> Skema tabel `products`
+schema.sql                      -> Skema tabel `categories` dan `products`
 .env.local.example              -> Contoh environment variables
 ```
 
@@ -30,6 +31,17 @@ schema.sql                      -> Skema tabel `products`
    mysql --host=<HOST> --port=<PORT> --user=<USER> --password=<PASSWORD> \
      --database=<DBNAME> --ssl-mode=REQUIRED < schema.sql
    ```
+
+   Untuk database yang sudah memiliki tabel `categories` dan `products`, jalankan
+   migrasi ini satu kali lewat query editor:
+   ```sql
+   ALTER TABLE products ADD COLUMN category_id INT NULL;
+   ALTER TABLE products
+     ADD CONSTRAINT fk_products_category
+     FOREIGN KEY (category_id) REFERENCES categories(id)
+     ON DELETE SET NULL;
+   ```
+   Kolom boleh `NULL`, jadi produk lama tetap tersimpan tanpa kategori.
 
 ## 2. Setup Project Secara Lokal
 
@@ -94,10 +106,12 @@ Pastikan `.env.local` **tidak** ikut ter-commit (sudah otomatis diabaikan lewat 
 
 ## Fitur
 
-- **Create**: tambah produk baru lewat form (nama, deskripsi, harga)
+- **Create**: tambah kategori dan produk (nama, deskripsi, harga, kategori)
 - **Read**: daftar semua produk otomatis dimuat saat halaman dibuka
 - **Update**: klik "Edit" pada baris produk untuk mengubah data
 - **Delete**: klik "Hapus" untuk menghapus produk (dengan konfirmasi)
+- Relasi kategori-produk: satu kategori dapat memiliki banyak produk; produk
+  yang belum memiliki kategori tetap diperbolehkan.
 
 ## Catatan
 
